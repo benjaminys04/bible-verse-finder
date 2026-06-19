@@ -113,7 +113,7 @@ export default function Home() {
                   style={[styles.title, { color: theme.text, fontSize: 32 * fontScale }]}
                   accessibilityRole="header"
                 >
-                  Bible Verse Finder
+                  Open Source Bible
                 </Text>
                 <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 17 * fontScale }]}>
                   Comforting Words From The Lord Our God For Whatever You’re Facing

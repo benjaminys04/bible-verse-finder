@@ -1,4 +1,4 @@
-# Verse Finder
+# Open Source Bible
 
 A warm, chatbot-style Bible verse finder — **a website**. Type anything: a theme
 ("forgiveness"), a situation ("I just lost my job"), a feeling, or a half-formed

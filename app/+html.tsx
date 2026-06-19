@@ -14,7 +14,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <title>Bible Verse Finder</title>
+        <title>Open Source Bible</title>
         <meta
           name="description"
           content="Type how you feel or what you're facing and find Bible verses that speak to the moment."

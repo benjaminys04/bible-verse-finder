@@ -1,4 +1,4 @@
-# Verse Finder — Build Plan
+# Open Source Bible: Build Plan
 
 A chatbot-style Bible verse finder **website**, built on Expo Router (web output)
 + React Native Web + TypeScript so it renders a responsive site with built-in
