@@ -116,12 +116,6 @@ export default function Home() {
                 >
                   Open Source Bible
                 </Text>
-                <Text style={[styles.subtitle, { color: theme.text, fontSize: 17 * fontScale, fontStyle: 'italic' }]}>
-                  “The light shines in the darkness, and the darkness has not overcome it.”
-                </Text>
-                <Text style={{ color: theme.textMuted, fontSize: 13 * fontScale, fontWeight: '600', marginTop: 3 }}>
-                  John 1:5
-                </Text>
               </View>
               <View style={styles.headerActions}>
                 {/* Two explicit theme buttons: Light and Dark (no system/auto). */}
@@ -151,6 +145,14 @@ export default function Home() {
                   </Pressable>
                 </Link>
               </View>
+            </View>
+            <View style={styles.quoteBlock}>
+              <Text style={[styles.quote, { color: theme.text, fontSize: 16 * fontScale }]}>
+                “The light shines in the darkness, and the darkness has not overcome it.”
+              </Text>
+              <Text style={[styles.quoteCite, { color: theme.textMuted, fontSize: 13 * fontScale }]}>
+                John 1:5
+              </Text>
             </View>
             <View style={styles.controlsRow}>
               <TranslationPicker />
@@ -231,7 +233,9 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderBottomWidth: 1, gap: 12 },
   headerTop: { flexDirection: 'row', alignItems: 'flex-start' },
   title: { fontWeight: '800' },
-  subtitle: { marginTop: 2 },
+  quoteBlock: { marginTop: 8 },
+  quote: { fontStyle: 'italic', lineHeight: 22 },
+  quoteCite: { fontWeight: '600', marginTop: 4 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   themeToggle: { flexDirection: 'row', borderRadius: 22, borderWidth: 1, padding: 3, gap: 2 },

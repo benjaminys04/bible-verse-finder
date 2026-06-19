@@ -39,20 +39,19 @@ export default function Root({ children }: PropsWithChildren) {
 
 const LORA = `'Lora', Georgia, 'Times New Roman', serif`;
 
-// React Native Web gives every <Text> a base class that sets the system font via
-// the CSS \`font:\` shorthand, which beats simple inheritance. To make the whole
-// UI Lora we override that with higher-specificity selectors, but we must NOT
-// touch icon glyphs (@expo/vector-icons), which carry their own
-// \`r-fontFamily-*\` class. So:
-//   display text -> [class*="css-text-"] WITHOUT an r-fontFamily class
-//   the search box -> [class*="css-textinput-"]
-// Icons keep their explicit font and render correctly.
+// React Native Web gives every <Text> a base class (e.g. \`css-146c3p1\`) that sets
+// the system font via the CSS \`font:\` shorthand, which beats simple inheritance.
+// Class names are build-dependent (dev prefixes them \`css-text-*\`, production uses
+// bare \`css-*\`), so we target any \`css-*\` element with a specificity that beats
+// the base class. The ONLY thing we must not touch is icon glyphs
+// (@expo/vector-icons), which set \`font-family: ionicons\` via the \`r-lrvibr\`
+// atomic class, so we exclude that and also re-assert the icon font as a backstop.
 const globalStyle = `
 html, body, #root { height: 100%; }
 html, body, #root { font-family: ${LORA}; }
-html body [class*="css-text-"]:not([class*="r-fontFamily-"]) { font-family: ${LORA}; }
-html body [class*="css-textinput-"] { font-family: ${LORA}; }
+html body [class*="css-"]:not([class*="r-lrvibr"]) { font-family: ${LORA}; }
 input, textarea, select, button { font-family: ${LORA}; }
+html body [class*="r-lrvibr"] { font-family: ionicons !important; }
 /* Default background to avoid a flash before the app paints. */
 body { background-color: #DCEAF5; }
 `;
