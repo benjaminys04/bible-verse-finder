@@ -7,7 +7,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,8 +36,10 @@ const nextId = () => `m${Date.now()}_${counter++}`;
 export default function Home() {
   const { theme, fontScale } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const maxWidth = Math.min(width, 720);
+  // Constant max width + width:'100%' lets CSS handle the responsive cap.
+  // (Do NOT derive this from useWindowDimensions: it returns 0 during SSR/
+  // hydration, which would collapse the whole content column to zero width.)
+  const maxWidth = 720;
 
   const translationId = useStore((s) => s.translationId);
   const history = useStore((s) => s.history);

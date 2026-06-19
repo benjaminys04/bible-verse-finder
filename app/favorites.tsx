@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,8 +10,7 @@ import { VerseCard } from '../src/components/VerseCard';
 export default function Favorites() {
   const { theme, fontScale } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const maxWidth = Math.min(width, 720);
+  const maxWidth = 720; // constant cap; width:'100%' makes it responsive
   const favorites = useStore((s) => s.favorites);
 
   return (
