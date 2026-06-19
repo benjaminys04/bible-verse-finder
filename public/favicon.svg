@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Bible Verse Finder">
+  <!-- rounded tile in the site's deep teal accent -->
+  <rect width="32" height="32" rx="7" fill="#2F6457"/>
+  <!-- book base / spine (light blue) -->
+  <rect x="8" y="7" width="16" height="18" rx="2.2" fill="#DCEAF5"/>
+  <!-- book cover (warm white), inset on the right to reveal the spine -->
+  <rect x="10.4" y="7" width="13.6" height="18" rx="2" fill="#FBFDFF"/>
+  <!-- small cross on the cover -->
+  <rect x="16.45" y="11" width="1.6" height="9" rx="0.7" fill="#2F6457"/>
+  <rect x="14.25" y="13.3" width="6" height="1.6" rx="0.7" fill="#2F6457"/>
+</svg>

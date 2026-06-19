@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Bible Verse Finder",
+    "slug": "verse-finder",
+    "version": "1.0.0",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset"
+    ]
+  }
+}

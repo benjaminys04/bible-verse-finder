@@ -1,0 +1,6 @@
+# Never upload these to Vercel.
+.env
+.env.local
+node_modules
+dist
+.expo
