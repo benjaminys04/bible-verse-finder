@@ -115,8 +115,11 @@ export default function Home() {
                 >
                   Open Source Bible
                 </Text>
-                <Text style={[styles.subtitle, { color: theme.textMuted, fontSize: 17 * fontScale }]}>
-                  Comforting Words From The Lord Our God For Whatever You’re Facing
+                <Text style={[styles.subtitle, { color: theme.text, fontSize: 17 * fontScale, fontStyle: 'italic' }]}>
+                  “The light shines in the darkness, and the darkness has not overcome it.”
+                </Text>
+                <Text style={{ color: theme.textMuted, fontSize: 13 * fontScale, fontWeight: '600', marginTop: 3 }}>
+                  John 1:5
                 </Text>
               </View>
               <View style={styles.headerActions}>
