@@ -64,11 +64,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderRadius: 26,
-    paddingLeft: 18,
+    paddingLeft: 24,
     paddingRight: 6,
     paddingVertical: 6,
     gap: 8,
   },
-  input: { flex: 1, paddingVertical: 10, minHeight: 44 },
+  input: { flex: 1, paddingVertical: 10, paddingLeft: 4, minHeight: 44 },
   send: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
 });
