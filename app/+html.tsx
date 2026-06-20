@@ -1,6 +1,5 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Web-only HTML shell (Expo Router uses this to render the document <head>/<body>
 // for static + server rendering). This is where we load the site font (Lora)
@@ -35,7 +34,13 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         {children}
-        <SpeedInsights />
+        {/* Vercel Web Analytics + Speed Insights. The @vercel/analytics and
+            @vercel/speed-insights React components don't bundle under Expo/Metro,
+            so we load the same scripts Vercel serves for an enabled project.
+            (Enable "Web Analytics" and "Speed Insights" in the Vercel dashboard
+            for data to start flowing.) */}
+        <script defer src="/_vercel/insights/script.js" />
+        <script defer src="/_vercel/speed-insights/script.js" />
       </body>
     </html>
   );

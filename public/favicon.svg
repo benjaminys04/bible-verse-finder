@@ -3,12 +3,10 @@
     <clipPath id="round"><rect width="32" height="32" rx="7"/></clipPath>
   </defs>
   <g clip-path="url(#round)">
-    <!-- green-white-green vertical bands (wider white center) -->
-    <rect x="0" y="0" width="9" height="32" fill="#2F6457"/>
-    <rect x="9" y="0" width="14" height="32" fill="#FFFFFF"/>
-    <rect x="23" y="0" width="9" height="32" fill="#2F6457"/>
-    <!-- centered green cross, with clear white margin on all sides -->
-    <rect x="14.3" y="6.5" width="3.4" height="19" rx="0.8" fill="#2F6457"/>
-    <rect x="11" y="14.3" width="10" height="3.4" rx="0.8" fill="#2F6457"/>
+    <!-- light-blue tile, matching the website background -->
+    <rect width="32" height="32" fill="#DCEAF5"/>
+    <!-- white Latin cross: crossbar lifted into the upper third, longer lower stem -->
+    <rect x="14.4" y="4.5" width="3.2" height="22.5" rx="0.8" fill="#FFFFFF"/>
+    <rect x="10.3" y="9.5" width="11.4" height="3.2" rx="0.8" fill="#FFFFFF"/>
   </g>
 </svg>
