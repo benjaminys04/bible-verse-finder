@@ -1,6 +1,7 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Web-only HTML shell (Expo Router uses this to render the document <head>/<body>
 // for static + server rendering). This is where we load the site font (Lora)
@@ -35,6 +36,7 @@ export default function Root({ children }: PropsWithChildren) {
       </head>
       <body>
         {children}
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
