@@ -62,6 +62,7 @@ function AuthForm() {
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -106,8 +107,7 @@ function AuthForm() {
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="you@example.com"
-          placeholderTextColor={theme.textMuted}
+          placeholder=""
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
@@ -116,17 +116,27 @@ function AuthForm() {
         />
       </Field>
       <Field label="Password" theme={theme} fontScale={fontScale}>
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          placeholderTextColor={theme.textMuted}
-          secureTextEntry
-          autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-          onSubmitEditing={submit}
-          style={[styles.input, { color: theme.text, borderColor: theme.border, fontSize: 16 * fontScale }]}
-          accessibilityLabel="Password"
-        />
+        <View style={[styles.pwRow, { borderColor: theme.border }]}>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            placeholder=""
+            secureTextEntry={!showPw}
+            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+            onSubmitEditing={submit}
+            style={[styles.pwInput, { color: theme.text, fontSize: 16 * fontScale }]}
+            accessibilityLabel="Password"
+          />
+          <Pressable
+            onPress={() => setShowPw((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
+            hitSlop={8}
+            style={styles.eyeBtn}
+          >
+            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
+          </Pressable>
+        </View>
       </Field>
 
       {error && <Text style={{ color: theme.danger, fontSize: 14 * fontScale }}>{error}</Text>}
@@ -222,6 +232,18 @@ function Profile() {
         )}
       </View>
 
+      {isAdmin && (
+        <Link href="/admin" asChild>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Open admin dashboard"
+            style={({ pressed }) => [styles.signOut, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 15 * fontScale }}>Open admin dashboard</Text>
+          </Pressable>
+        </Link>
+      )}
+
       <Pressable
         onPress={signOut}
         accessibilityRole="button"
@@ -256,6 +278,9 @@ const styles = StyleSheet.create({
   title: { fontWeight: '800' },
   card: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 12 },
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 48 },
+  pwRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingRight: 6 },
+  pwInput: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, minHeight: 48 },
+  eyeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   primaryBtn: { borderRadius: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   signOut: { borderWidth: 1, borderRadius: 12, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },

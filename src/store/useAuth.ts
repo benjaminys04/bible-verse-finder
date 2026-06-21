@@ -28,6 +28,7 @@ export const useAuth = create<AuthState>()(
       signIn: async (email, password) => {
         const session = await sb.signIn(email.trim(), password);
         set({ session });
+        void sb.touchLastSeen(session);
         set({ profile: await sb.getProfile(session).catch(() => null) });
       },
 

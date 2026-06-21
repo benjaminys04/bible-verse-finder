@@ -13,6 +13,7 @@ import {
   getEntitlement,
   getUsage,
   incrementUsage,
+  touchLastSeen,
   FREE_MONTHLY_LIMIT,
 } from '../src/lib/supabaseAdmin';
 
@@ -91,6 +92,7 @@ export async function GET(request: Request): Promise<Response> {
       );
     }
     authedUserId = user.id;
+    void touchLastSeen(user.id);
     const entitlement = await getEntitlement(user);
     if (!entitlement.unlimited) {
       const used = await getUsage(user.id);

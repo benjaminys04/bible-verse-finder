@@ -98,3 +98,83 @@ export async function incrementUsage(userId: string): Promise<void> {
     body: JSON.stringify({ user_id: userId, period: period(), message_count: current + 1 }),
   });
 }
+
+// Mark a user as recently active (powers "logged-in / active users").
+export async function touchLastSeen(userId: string): Promise<void> {
+  await patchProfile(userId, { last_seen_at: new Date().toISOString() }).catch(() => {});
+}
+
+// Record a page view (no-op if the optional page_views table hasn't been created).
+export async function recordPageView(path: string): Promise<void> {
+  await fetch(`${URL}/rest/v1/page_views`, {
+    method: 'POST',
+    headers: svcHeaders({ Prefer: 'return=minimal' }),
+    body: JSON.stringify({ path: path.slice(0, 256) }),
+  }).catch(() => {});
+}
+
+export interface AdminStats {
+  totalAccounts: number;
+  proSubscribers: number;
+  admins: number;
+  activeThisMonth: number;
+  loggedInEver: number;
+  messagesThisMonth: number;
+  messagesAllTime: number;
+  pageViews: number | null; // null = page_views table not set up yet
+  topUsers: { email: string; messages: number }[];
+}
+
+// Aggregate everything for the admin dashboard (service-role; bypasses RLS).
+export async function getAdminStats(): Promise<AdminStats> {
+  const svc = svcHeaders();
+  const [profilesRes, usageRes] = await Promise.all([
+    fetch(`${URL}/rest/v1/profiles?select=id,email,plan,role,last_seen_at&limit=10000`, { headers: svc }),
+    fetch(`${URL}/rest/v1/usage_monthly?select=user_id,period,message_count&limit=100000`, { headers: svc }),
+  ]);
+  const profiles: any[] = (await profilesRes.json().catch(() => [])) || [];
+  const usage: any[] = (await usageRes.json().catch(() => [])) || [];
+
+  const p = period();
+  const emailById = new Map<string, string>(profiles.map((r) => [r.id, r.email]));
+
+  const messagesThisMonthByUser = new Map<string, number>();
+  let messagesAllTime = 0;
+  for (const u of usage) {
+    messagesAllTime += u.message_count || 0;
+    if (u.period === p) messagesThisMonthByUser.set(u.user_id, (u.message_count || 0));
+  }
+  const messagesThisMonth = [...messagesThisMonthByUser.values()].reduce((a, b) => a + b, 0);
+
+  const topUsers = [...messagesThisMonthByUser.entries()]
+    .map(([id, messages]) => ({ email: emailById.get(id) || '(unknown)', messages }))
+    .sort((a, b) => b.messages - a.messages)
+    .slice(0, 10);
+
+  // Page views (optional table).
+  let pageViews: number | null = null;
+  try {
+    const pv = await fetch(`${URL}/rest/v1/page_views?select=id`, {
+      headers: { ...svc, Prefer: 'count=exact', Range: '0-0' },
+    });
+    if (pv.ok) {
+      const cr = pv.headers.get('content-range'); // "0-0/123" or "*/0"
+      const total = cr ? Number(cr.split('/')[1]) : NaN;
+      pageViews = Number.isFinite(total) ? total : null;
+    }
+  } catch {
+    pageViews = null;
+  }
+
+  return {
+    totalAccounts: profiles.length,
+    proSubscribers: profiles.filter((r) => r.plan === 'pro').length,
+    admins: profiles.filter((r) => r.role === 'admin').length,
+    activeThisMonth: messagesThisMonthByUser.size,
+    loggedInEver: profiles.filter((r) => r.last_seen_at).length,
+    messagesThisMonth,
+    messagesAllTime,
+    pageViews,
+    topUsers,
+  };
+}

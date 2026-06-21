@@ -97,3 +97,17 @@ export async function getMonthlyUsage(s: Session): Promise<number> {
   );
   return rows[0]?.message_count ?? 0;
 }
+
+// Stamp last_seen on the user's own profile (RLS allows own-profile update).
+export async function touchLastSeen(s: Session): Promise<void> {
+  await fetch(`${URL}/rest/v1/profiles?id=eq.${s.user.id}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: ANON,
+      authorization: `Bearer ${s.access_token}`,
+      'content-type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
+  }).catch(() => {});
+}
