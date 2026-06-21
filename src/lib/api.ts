@@ -29,21 +29,26 @@ export interface ContextResponse {
 // a relative path is all we need. We use GET with query params (not POST bodies)
 // because the Expo server adapter does not reliably deliver request bodies on
 // Vercel; reading them hangs the serverless function.
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { method: 'GET', headers: { accept: 'application/json' } });
+export type ApiError = Error & { status?: number; code?: string };
+
+async function getJson<T>(path: string, token?: string): Promise<T> {
+  const res = await fetch(path, {
+    method: 'GET',
+    headers: { accept: 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const message = (data as any)?.error || `Request failed (${res.status})`;
-    const err = new Error(message) as Error & { status?: number };
+    const err = new Error((data as any)?.error || `Request failed (${res.status})`) as ApiError;
     err.status = res.status;
+    err.code = (data as any)?.code;
     throw err;
   }
   return data as T;
 }
 
-export function searchVerses(query: string, translationId: string): Promise<SearchResponse> {
+export function searchVerses(query: string, translationId: string, token?: string): Promise<SearchResponse> {
   const qs = new URLSearchParams({ q: query, t: translationId }).toString();
-  return getJson<SearchResponse>(`/search?${qs}`);
+  return getJson<SearchResponse>(`/search?${qs}`, token);
 }
 
 export function fetchContext(params: {

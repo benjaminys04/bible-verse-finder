@@ -14,13 +14,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../src/lib/useTheme';
 import { useStore } from '../src/store/useStore';
-import { searchVerses, type SearchResult } from '../src/lib/api';
+import { useAuth } from '../src/store/useAuth';
+import { supabaseConfigured } from '../src/lib/supabase';
+import { searchVerses, type SearchResult, type ApiError } from '../src/lib/api';
 import { ChatInput } from '../src/components/ChatInput';
 import { VerseCard } from '../src/components/VerseCard';
 import { TranslationPicker } from '../src/components/TranslationPicker';
-import { LoadingState, ErrorState, NoMatchState, EmptyHome } from '../src/components/States';
+import {
+  LoadingState,
+  ErrorState,
+  NoMatchState,
+  EmptyHome,
+  AuthRequiredState,
+  LimitReachedState,
+} from '../src/components/States';
 
-type Status = 'loading' | 'done' | 'error' | 'nomatch';
+type Status = 'loading' | 'done' | 'error' | 'nomatch' | 'auth_required' | 'limit_reached';
 
 interface Message {
   id: string;
@@ -48,6 +57,8 @@ export default function Home() {
   const themePref = useStore((s) => s.themePref);
   const setThemePref = useStore((s) => s.setThemePref);
 
+  const getAccessToken = useAuth((s) => s.getAccessToken);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -59,7 +70,15 @@ export default function Home() {
         prev.map((m) => (m.id === messageId ? { ...m, status: 'loading', error: undefined } : m)),
       );
       try {
-        const res = await searchVerses(query, translationId);
+        // When accounts are enabled, require a session and attach the token.
+        const token = (await getAccessToken()) ?? undefined;
+        if (supabaseConfigured && !token) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === messageId ? { ...m, status: 'auth_required' } : m)),
+          );
+          return;
+        }
+        const res = await searchVerses(query, translationId, token);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
@@ -71,12 +90,13 @@ export default function Home() {
               : m,
           ),
         );
-      } catch (e: any) {
+      } catch (e) {
+        const err = e as ApiError;
+        const status: Status =
+          err.code === 'limit_reached' ? 'limit_reached' : err.code === 'auth_required' ? 'auth_required' : 'error';
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === messageId
-              ? { ...m, status: 'error', error: e?.message || 'Please try again.' }
-              : m,
+            m.id === messageId ? { ...m, status, error: err.message || 'Please try again.' } : m,
           ),
         );
       } finally {
@@ -84,7 +104,7 @@ export default function Home() {
         requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
       }
     },
-    [translationId],
+    [translationId, getAccessToken],
   );
 
   const submit = useCallback(
@@ -187,6 +207,8 @@ export default function Home() {
                   <ErrorState message={m.error || ''} onRetry={() => runSearch(m.query, m.id)} />
                 )}
                 {m.status === 'nomatch' && <NoMatchState onRetry={() => runSearch(m.query, m.id)} />}
+                {m.status === 'auth_required' && <AuthRequiredState />}
+                {m.status === 'limit_reached' && <LimitReachedState />}
                 {m.status === 'done' && m.results.map((v, i) => <VerseCard key={`${m.id}-${i}`} verse={v} />)}
               </View>
             ))}

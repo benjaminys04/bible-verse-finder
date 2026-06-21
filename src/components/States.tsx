@@ -1,6 +1,55 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
 import { useTheme } from '../lib/useTheme';
+
+// Shown when accounts are enabled and the visitor isn't signed in.
+export function AuthRequiredState() {
+  const { theme, fontScale } = useTheme();
+  return (
+    <View style={styles.wrap}>
+      <Text style={[styles.title, { color: theme.text, fontSize: 18 * fontScale }]}>
+        Create a free account to start
+      </Text>
+      <Text style={[styles.muted, { color: theme.textMuted, fontSize: 15 * fontScale }]}>
+        You get 10 free messages a month. It only takes a few seconds.
+      </Text>
+      <Link href="/account" asChild>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Sign in or sign up"
+          style={({ pressed }) => [styles.btn, { backgroundColor: theme.accent, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 15 * fontScale }}>Sign in / Sign up</Text>
+        </Pressable>
+      </Link>
+    </View>
+  );
+}
+
+// Shown when a free user hits their monthly limit.
+export function LimitReachedState() {
+  const { theme, fontScale } = useTheme();
+  return (
+    <View style={styles.wrap}>
+      <Text style={[styles.title, { color: theme.text, fontSize: 18 * fontScale }]}>
+        You’ve used your 10 free messages
+      </Text>
+      <Text style={[styles.muted, { color: theme.textMuted, fontSize: 15 * fontScale }]}>
+        Upgrade to Pro for unlimited messages — $3.99/mo or $19.99/yr.
+      </Text>
+      <Link href="/account" asChild>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Upgrade to Pro"
+          style={({ pressed }) => [styles.btn, { backgroundColor: theme.accent, opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 15 * fontScale }}>Upgrade to Pro</Text>
+        </Pressable>
+      </Link>
+    </View>
+  );
+}
 
 // Loading, empty, error, and "no strong match" states for the async search path.
 

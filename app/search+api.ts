@@ -7,6 +7,14 @@ import {
 } from '../src/lib/translations/registry';
 import type { ResolvedVerse } from '../src/lib/bible';
 import { rateLimit, clientKey } from '../src/lib/rateLimit';
+import {
+  adminConfigured,
+  getUserFromToken,
+  getEntitlement,
+  getUsage,
+  incrementUsage,
+  FREE_MONTHLY_LIMIT,
+} from '../src/lib/supabaseAdmin';
 
 // GET /search?q=<text>&t=<translationId>
 //
@@ -68,6 +76,36 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  // --- Accounts + free-tier metering (active once Supabase is configured) ---
+  // Require a logged-in account; free users get FREE_MONTHLY_LIMIT messages/month;
+  // Pro and Admin are unlimited. The admin email is auto-granted admin.
+  let authedUserId: string | null = null;
+  if (adminConfigured()) {
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+    const user = token ? await getUserFromToken(token) : null;
+    if (!user) {
+      return Response.json(
+        { error: 'Create a free account to start — you get 10 free messages a month.', code: 'auth_required' },
+        { status: 401, headers: NO_STORE },
+      );
+    }
+    authedUserId = user.id;
+    const entitlement = await getEntitlement(user);
+    if (!entitlement.unlimited) {
+      const used = await getUsage(user.id);
+      if (used >= FREE_MONTHLY_LIMIT) {
+        return Response.json(
+          {
+            error: `You've used all ${FREE_MONTHLY_LIMIT} free messages this month. Upgrade to Pro for unlimited.`,
+            code: 'limit_reached',
+          },
+          { status: 403, headers: NO_STORE },
+        );
+      }
+    }
+  }
+
   let provider;
   try {
     provider = getProvider();
@@ -115,6 +153,11 @@ export async function GET(request: Request): Promise<Response> {
 
       if (collected.length >= MIN_GOOD || addedThisRound === 0) break;
     }
+
+    // Count this query as one "message" for the user (used for the free-tier
+    // limit and the admin per-user totals). Don't let a metering hiccup fail the
+    // search the user already paid attention to.
+    if (authedUserId) await incrementUsage(authedUserId).catch(() => {});
 
     if (noStrongMatch || collected.length === 0) {
       return Response.json(
