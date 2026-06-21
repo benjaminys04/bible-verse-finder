@@ -102,9 +102,20 @@ export default function Admin() {
 
               <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={{ color: theme.text, fontSize: 16 * fontScale, fontWeight: '700' }}>Payments</Text>
-                <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale, lineHeight: 20 }}>
-                  Revenue and active subscriptions appear here once Stripe is connected (Phase 3).
-                </Text>
+                <View style={styles.payRow}>
+                  <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale }}>Estimated MRR</Text>
+                  <Text style={{ color: theme.text, fontSize: 18 * fontScale, fontWeight: '800' }}>
+                    ${(stats.estMrrCents / 100).toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.payRow}>
+                  <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale }}>Monthly subscribers</Text>
+                  <Text style={{ color: theme.text, fontSize: 14 * fontScale, fontWeight: '700' }}>{stats.monthlySubs}</Text>
+                </View>
+                <View style={styles.payRow}>
+                  <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale }}>Yearly subscribers</Text>
+                  <Text style={{ color: theme.text, fontSize: 14 * fontScale, fontWeight: '700' }}>{stats.yearlySubs}</Text>
+                </View>
               </View>
             </>
           )}
@@ -157,5 +168,6 @@ const styles = StyleSheet.create({
   statCard: { flexGrow: 1, flexBasis: 150, borderRadius: 14, borderWidth: 1, padding: 16, gap: 2 },
   card: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 10 },
   row: { flexDirection: 'row', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, gap: 10 },
+  payRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cta: { borderRadius: 12, minHeight: 48, paddingHorizontal: 22, alignItems: 'center', justifyContent: 'center' },
 });

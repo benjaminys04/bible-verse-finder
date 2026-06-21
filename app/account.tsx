@@ -8,7 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../src/lib/useTheme';
@@ -180,7 +180,13 @@ function Profile() {
   const session = useAuth((s) => s.session);
   const profile = useAuth((s) => s.profile);
   const signOut = useAuth((s) => s.signOut);
+  const getAccessToken = useAuth((s) => s.getAccessToken);
+  const refreshProfile = useAuth((s) => s.refreshProfile);
+  const params = useLocalSearchParams<{ upgraded?: string; canceled?: string; session_id?: string }>();
+
   const [usage, setUsage] = useState<number | null>(null);
+  const [checkoutBusy, setCheckoutBusy] = useState<null | 'month' | 'year'>(null);
+  const [banner, setBanner] = useState<string | null>(null);
 
   const isAdmin = profile?.role === 'admin';
   const isPro = profile?.plan === 'pro';
@@ -194,8 +200,61 @@ function Profile() {
     };
   }, [session]);
 
+  // Confirm the upgrade when Stripe redirects back to /account?upgraded=1.
+  useEffect(() => {
+    if (params.canceled === '1') setBanner('Checkout canceled — no charge was made.');
+    if (params.upgraded === '1' && params.session_id) {
+      (async () => {
+        const token = await getAccessToken();
+        try {
+          const res = await fetch(`/subscription-sync?session_id=${encodeURIComponent(String(params.session_id))}`, {
+            headers: { authorization: `Bearer ${token}` },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.pro) {
+            setBanner('You’re Pro! Unlimited messages unlocked.');
+            await refreshProfile();
+          } else if (data.pending) {
+            setBanner('Payment is processing — refresh in a moment.');
+          } else {
+            setBanner(data.error || 'Could not confirm the upgrade.');
+          }
+        } catch {
+          setBanner('Could not confirm the upgrade.');
+        }
+        if (typeof window !== 'undefined') window.history.replaceState({}, '', '/account');
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startCheckout = async (interval: 'month' | 'year') => {
+    setBanner(null);
+    setCheckoutBusy(interval);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`/checkout?interval=${interval}`, { headers: { authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
+      if (data.url && typeof window !== 'undefined') {
+        window.location.href = data.url;
+        return;
+      }
+      setBanner(data.error || 'Could not start checkout.');
+    } catch {
+      setBanner('Could not start checkout.');
+    } finally {
+      setCheckoutBusy(null);
+    }
+  };
+
   return (
     <View style={{ gap: 14 }}>
+      {banner && (
+        <View style={[styles.card, { backgroundColor: theme.accentSoft, borderColor: theme.accent, padding: 14 }]}>
+          <Text style={{ color: theme.accent, fontSize: 14 * fontScale, fontWeight: '600' }}>{banner}</Text>
+        </View>
+      )}
+
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={{ color: theme.textMuted, fontSize: 13 * fontScale }}>Signed in as</Text>
         <Text style={{ color: theme.text, fontSize: 18 * fontScale, fontWeight: '700' }}>{session?.user.email}</Text>
@@ -214,21 +273,41 @@ function Profile() {
             : `${usage ?? '…'} of ${FREE_LIMIT} free messages used.`}
         </Text>
         {!unlimited && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Upgrade to Pro"
-            onPress={() => {}}
-            style={({ pressed }) => [styles.primaryBtn, { backgroundColor: theme.accent, opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 15 * fontScale }}>
-              Upgrade to Pro — $3.99/mo
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade to Pro, monthly"
+              disabled={!!checkoutBusy}
+              onPress={() => startCheckout('month')}
+              style={({ pressed }) => [styles.primaryBtn, { backgroundColor: theme.accent, opacity: checkoutBusy || pressed ? 0.7 : 1 }]}
+            >
+              {checkoutBusy === 'month' ? (
+                <ActivityIndicator color={theme.accentText} />
+              ) : (
+                <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 15 * fontScale }}>
+                  Upgrade to Pro — $3.99 / month
+                </Text>
+              )}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade to Pro, yearly"
+              disabled={!!checkoutBusy}
+              onPress={() => startCheckout('year')}
+              style={({ pressed }) => [styles.signOut, { borderColor: theme.accent, opacity: checkoutBusy || pressed ? 0.7 : 1 }]}
+            >
+              {checkoutBusy === 'year' ? (
+                <ActivityIndicator color={theme.accent} />
+              ) : (
+                <Text style={{ color: theme.accent, fontWeight: '700', fontSize: 15 * fontScale }}>
+                  Or $19.99 / year — save 58%
+                </Text>
+              )}
+            </Pressable>
+            <Text style={{ color: theme.textMuted, fontSize: 12 * fontScale, textAlign: 'center' }}>
+              Unlimited messages. Cancel anytime.
             </Text>
-          </Pressable>
-        )}
-        {!unlimited && (
-          <Text style={{ color: theme.textMuted, fontSize: 12 * fontScale, textAlign: 'center' }}>
-            Unlimited messages. Cancel anytime.
-          </Text>
+          </>
         )}
       </View>
 
