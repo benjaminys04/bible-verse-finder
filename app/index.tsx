@@ -144,6 +144,11 @@ export default function Home() {
                     <Ionicons name="heart-outline" size={22} color={theme.textMuted} />
                   </Pressable>
                 </Link>
+                <Link href="/account" asChild>
+                  <Pressable accessibilityRole="link" accessibilityLabel="Account" hitSlop={8} style={styles.iconBtn}>
+                    <Ionicons name="person-circle-outline" size={24} color={theme.textMuted} />
+                  </Pressable>
+                </Link>
               </View>
             </View>
             <View style={styles.quoteBlock}>
