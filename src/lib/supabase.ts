@@ -51,7 +51,12 @@ async function authPost(path: string, body: unknown, token?: string): Promise<an
 // Returns a session, or null + needsConfirm when the project requires email
 // confirmation before the first login.
 export async function signUp(email: string, password: string): Promise<{ session: Session | null; needsConfirm: boolean }> {
-  const d = await authPost('signup', { email, password });
+  // Point the email-confirmation link at the live site (this origin) rather than
+  // the project's default Site URL. The target must also be allow-listed in
+  // Supabase → Auth → URL Configuration → Redirect URLs, or GoTrue ignores it.
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const path = origin ? `signup?redirect_to=${encodeURIComponent(origin + '/account')}` : 'signup';
+  const d = await authPost(path, { email, password });
   if (d.access_token) return { session: toSession(d), needsConfirm: false };
   return { session: null, needsConfirm: true };
 }
