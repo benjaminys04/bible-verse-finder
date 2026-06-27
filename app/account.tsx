@@ -58,8 +58,9 @@ function AuthForm() {
   const { theme, fontScale } = useTheme();
   const signIn = useAuth((s) => s.signIn);
   const signUp = useAuth((s) => s.signUp);
+  const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
 
-  const [mode, setMode] = useState<'in' | 'up'>('in');
+  const [mode, setMode] = useState<'in' | 'up' | 'forgot'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -70,6 +71,25 @@ function AuthForm() {
   const submit = async () => {
     setError(null);
     setNotice(null);
+
+    if (mode === 'forgot') {
+      if (!email.trim()) {
+        setError('Enter your email.');
+        return;
+      }
+      setBusy(true);
+      try {
+        await requestPasswordReset(email);
+        // Generic confirmation — never reveal whether the email is registered.
+        setNotice('If an account exists for that email, a password-reset link is on its way. Check your inbox (and spam).');
+      } catch (e: any) {
+        setError(e?.message || 'Could not send the reset email. Please try again.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     if (!email.trim() || !password) {
       setError('Enter your email and password.');
       return;
@@ -92,16 +112,19 @@ function AuthForm() {
     }
   };
 
+  const title = mode === 'in' ? 'Welcome back' : mode === 'up' ? 'Create your account' : 'Reset your password';
+  const subtitle =
+    mode === 'in'
+      ? 'Sign in to save favorites and track your messages.'
+      : mode === 'up'
+        ? 'Free includes 10 messages a month. Upgrade anytime for unlimited.'
+        : 'Enter your email and we’ll send you a link to set a new password.';
+  const submitLabel = mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Send reset link';
+
   return (
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <Text style={{ color: theme.text, fontSize: 19 * fontScale, fontWeight: '700' }}>
-        {mode === 'in' ? 'Welcome back' : 'Create your account'}
-      </Text>
-      <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale, lineHeight: 20 }}>
-        {mode === 'in'
-          ? 'Sign in to save favorites and track your messages.'
-          : 'Free includes 10 messages a month. Upgrade anytime for unlimited.'}
-      </Text>
+      <Text style={{ color: theme.text, fontSize: 19 * fontScale, fontWeight: '700' }}>{title}</Text>
+      <Text style={{ color: theme.textMuted, fontSize: 14 * fontScale, lineHeight: 20 }}>{subtitle}</Text>
 
       <Field label="Email" theme={theme} fontScale={fontScale}>
         <TextInput
@@ -115,29 +138,46 @@ function AuthForm() {
           accessibilityLabel="Email"
         />
       </Field>
-      <Field label="Password" theme={theme} fontScale={fontScale}>
-        <View style={[styles.pwRow, { borderColor: theme.border }]}>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder=""
-            secureTextEntry={!showPw}
-            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-            onSubmitEditing={submit}
-            style={[styles.pwInput, { color: theme.text, fontSize: 16 * fontScale }]}
-            accessibilityLabel="Password"
-          />
-          <Pressable
-            onPress={() => setShowPw((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
-            hitSlop={8}
-            style={styles.eyeBtn}
-          >
-            <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
-          </Pressable>
-        </View>
-      </Field>
+      {mode !== 'forgot' && (
+        <Field label="Password" theme={theme} fontScale={fontScale}>
+          <View style={[styles.pwRow, { borderColor: theme.border }]}>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder=""
+              secureTextEntry={!showPw}
+              autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+              onSubmitEditing={submit}
+              style={[styles.pwInput, { color: theme.text, fontSize: 16 * fontScale }]}
+              accessibilityLabel="Password"
+            />
+            <Pressable
+              onPress={() => setShowPw((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={showPw ? 'Hide password' : 'Show password'}
+              hitSlop={8}
+              style={styles.eyeBtn}
+            >
+              <Ionicons name={showPw ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
+            </Pressable>
+          </View>
+        </Field>
+      )}
+
+      {mode === 'in' && (
+        <Pressable
+          onPress={() => {
+            setMode('forgot');
+            setError(null);
+            setNotice(null);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Forgot password"
+          style={{ alignSelf: 'flex-end', minHeight: 36, justifyContent: 'center' }}
+        >
+          <Text style={{ color: theme.accent, fontSize: 13 * fontScale }}>Forgot password?</Text>
+        </Pressable>
+      )}
 
       {error && <Text style={{ color: theme.danger, fontSize: 14 * fontScale }}>{error}</Text>}
       {notice && <Text style={{ color: theme.accent, fontSize: 14 * fontScale }}>{notice}</Text>}
@@ -146,15 +186,13 @@ function AuthForm() {
         onPress={submit}
         disabled={busy}
         accessibilityRole="button"
-        accessibilityLabel={mode === 'in' ? 'Sign in' : 'Create account'}
+        accessibilityLabel={submitLabel}
         style={({ pressed }) => [styles.primaryBtn, { backgroundColor: theme.accent, opacity: busy || pressed ? 0.7 : 1 }]}
       >
         {busy ? (
           <ActivityIndicator color={theme.accentText} />
         ) : (
-          <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 16 * fontScale }}>
-            {mode === 'in' ? 'Sign in' : 'Create account'}
-          </Text>
+          <Text style={{ color: theme.accentText, fontWeight: '700', fontSize: 16 * fontScale }}>{submitLabel}</Text>
         )}
       </Pressable>
 
@@ -168,7 +206,11 @@ function AuthForm() {
         style={{ alignSelf: 'center', minHeight: 44, justifyContent: 'center' }}
       >
         <Text style={{ color: theme.accent, fontSize: 14 * fontScale }}>
-          {mode === 'in' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+          {mode === 'in'
+            ? 'New here? Create an account'
+            : mode === 'up'
+              ? 'Already have an account? Sign in'
+              : 'Back to sign in'}
         </Text>
       </Pressable>
     </View>

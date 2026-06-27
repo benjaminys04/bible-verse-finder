@@ -12,6 +12,10 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ needsConfirm: boolean }>;
   signOut: () => Promise<void>;
 
+  requestPasswordReset: (email: string) => Promise<void>;
+  // Set a new password from a recovery link, then sign the user in.
+  completePasswordReset: (recovery: sb.RecoveryTokens, password: string) => Promise<void>;
+
   // A valid access token (refreshed if it's about to expire), or null if signed out.
   getAccessToken: () => Promise<string | null>;
   refreshProfile: () => Promise<void>;
@@ -45,6 +49,17 @@ export const useAuth = create<AuthState>()(
         const s = get().session;
         if (s) await sb.signOut(s.access_token);
         set({ session: null, profile: null });
+      },
+
+      requestPasswordReset: async (email) => {
+        await sb.requestPasswordReset(email.trim());
+      },
+
+      completePasswordReset: async (recovery, password) => {
+        const session = await sb.updatePassword(recovery, password);
+        set({ session });
+        void sb.touchLastSeen(session);
+        set({ profile: await sb.getProfile(session).catch(() => null) });
       },
 
       getAccessToken: async () => {
