@@ -61,6 +61,26 @@ export async function signUp(email: string, password: string): Promise<{ session
   return { session: null, needsConfirm: true };
 }
 
+// Create an account through our server route, which uses the service-role key to
+// make the user ALREADY email-confirmed. That lets the caller sign in with the
+// chosen password immediately — no confirmation email, no "Email not confirmed"
+// wall. Resolves true on success; false means the server route isn't configured
+// (503) so the caller should fall back to client-side signUp(). Throws with a
+// user-facing message for real failures (e.g. the email is already registered).
+export async function signUpViaServer(email: string, password: string): Promise<boolean> {
+  const res = await fetch('/signup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: email.trim(), password }),
+  });
+  if (res.status === 503) return false; // not configured → caller falls back
+  const data = await res.json().catch(() => ({} as any));
+  if (!res.ok) {
+    throw new Error(data?.error || `Could not create the account (${res.status}).`);
+  }
+  return true;
+}
+
 export async function signIn(email: string, password: string): Promise<Session> {
   return toSession(await authPost('token?grant_type=password', { email, password }));
 }
@@ -128,6 +148,49 @@ export async function updatePassword(recovery: RecoveryTokens, password: string)
     refresh_token: recovery.refresh_token,
     expires_at: Math.floor(Date.now() / 1000) + recovery.expires_in,
     user: { id: data?.id ?? '', email: data?.email ?? '' },
+  };
+}
+
+// Parse the session GoTrue appends to ANY auth redirect hash (email-confirmation
+// / magic-link / signup), e.g. #access_token=…&refresh_token=…&type=signup.
+// Returns the tokens, or an error message GoTrue passed instead (e.g. an expired
+// link), or null when the hash carries no auth payload. (Recovery links use the
+// narrower parseRecoveryHash above; this one accepts any type that carries a
+// session.)
+export function parseAuthHash(hash: string): { tokens?: RecoveryTokens; type?: string; error?: string } | null {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  if (!raw) return null;
+  const p = new URLSearchParams(raw);
+  const error = p.get('error_description') || p.get('error');
+  if (error) return { error: error.replace(/\+/g, ' ') };
+  const access_token = p.get('access_token');
+  if (!access_token) return null;
+  return {
+    tokens: {
+      access_token,
+      refresh_token: p.get('refresh_token') ?? '',
+      expires_in: Number(p.get('expires_in')) || 3600,
+    },
+    type: p.get('type') ?? undefined,
+  };
+}
+
+// Build a full Session from redirect tokens, looking up the user's id + email so
+// the profile fetch and "signed in as" line work. Used when a confirmation link
+// lands on /account with a session in the hash.
+export async function sessionFromTokens(t: RecoveryTokens): Promise<Session> {
+  const res = await fetch(`${URL}/auth/v1/user`, {
+    headers: { apikey: ANON, authorization: `Bearer ${t.access_token}` },
+  });
+  const u = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(u?.error_description || u?.msg || u?.message || `Request failed (${res.status})`);
+  }
+  return {
+    access_token: t.access_token,
+    refresh_token: t.refresh_token,
+    expires_at: Math.floor(Date.now() / 1000) + t.expires_in,
+    user: { id: u?.id ?? '', email: u?.email ?? '' },
   };
 }
 

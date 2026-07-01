@@ -20,6 +20,37 @@ export interface AuthedUser {
   email: string;
 }
 
+// Create a new user that is ALREADY email-confirmed, so they can sign in with
+// their chosen password immediately — no confirmation email, no "Email not
+// confirmed" wall. Uses the service-role Admin API (bypasses the project's
+// "Confirm email" setting). Returns a discriminated result the route maps to
+// HTTP status codes.
+export type CreateUserResult =
+  | { ok: true }
+  | { ok: false; status: number; error: string };
+
+export async function adminCreateConfirmedUser(email: string, password: string): Promise<CreateUserResult> {
+  const res = await fetch(`${URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: svcHeaders(),
+    body: JSON.stringify({ email, password, email_confirm: true }),
+  });
+  const data = await res.json().catch(() => ({} as any));
+  if (res.ok && data?.id) return { ok: true };
+
+  // Duplicate email → GoTrue returns 422 (code 'email_exists') or a message
+  // mentioning "already registered". Surface as 409 so the client can steer the
+  // user to sign in instead.
+  const msg: string = data?.msg || data?.error_description || data?.message || '';
+  const code: string = data?.error_code || data?.code || '';
+  const duplicate =
+    res.status === 422 || code === 'email_exists' || /already been registered|already registered|already exists/i.test(msg);
+  if (duplicate) {
+    return { ok: false, status: 409, error: 'An account with this email already exists. Try signing in instead.' };
+  }
+  return { ok: false, status: res.status || 502, error: msg || 'Could not create the account. Please try again.' };
+}
+
 // Verify a user access token with Supabase and return the user (or null).
 export async function getUserFromToken(token: string): Promise<AuthedUser | null> {
   if (!token) return null;

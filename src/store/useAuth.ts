@@ -12,6 +12,10 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ needsConfirm: boolean }>;
   signOut: () => Promise<void>;
 
+  // Establish a session from tokens carried on an auth redirect (e.g. an email
+  // confirmation link that lands on /account with a session in the URL hash).
+  establishSession: (tokens: sb.RecoveryTokens) => Promise<void>;
+
   requestPasswordReset: (email: string) => Promise<void>;
   // Set a new password from a recovery link, then sign the user in.
   completePasswordReset: (recovery: sb.RecoveryTokens, password: string) => Promise<void>;
@@ -37,12 +41,35 @@ export const useAuth = create<AuthState>()(
       },
 
       signUp: async (email, password) => {
-        const { session, needsConfirm } = await sb.signUp(email.trim(), password);
+        const e = email.trim();
+        // Preferred path: create an already-confirmed account server-side, then
+        // sign in immediately with the chosen password — no confirmation wall.
+        const created = await sb.signUpViaServer(e, password);
+        if (created) {
+          const session = await sb.signIn(e, password);
+          set({ session });
+          void sb.touchLastSeen(session);
+          set({ profile: await sb.getProfile(session).catch(() => null) });
+          return { needsConfirm: false };
+        }
+
+        // Fallback (server route not configured): direct client-side signup. If
+        // the project auto-confirms, we get a session and sign in immediately;
+        // otherwise the caller shows the "check your email" notice.
+        const { session, needsConfirm } = await sb.signUp(e, password);
         if (session) {
           set({ session });
+          void sb.touchLastSeen(session);
           set({ profile: await sb.getProfile(session).catch(() => null) });
         }
         return { needsConfirm };
+      },
+
+      establishSession: async (tokens) => {
+        const session = await sb.sessionFromTokens(tokens);
+        set({ session });
+        void sb.touchLastSeen(session);
+        set({ profile: await sb.getProfile(session).catch(() => null) });
       },
 
       signOut: async () => {

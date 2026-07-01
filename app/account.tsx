@@ -13,15 +13,42 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../src/lib/useTheme';
 import { useAuth } from '../src/store/useAuth';
-import { supabaseConfigured, getMonthlyUsage } from '../src/lib/supabase';
+import { supabaseConfigured, getMonthlyUsage, parseAuthHash } from '../src/lib/supabase';
 
 const FREE_LIMIT = 10;
+const MIN_PASSWORD = 8;
 
 export default function Account() {
   const { theme, fontScale } = useTheme();
   const insets = useSafeAreaInsets();
   const session = useAuth((s) => s.session);
+  const establishSession = useAuth((s) => s.establishSession);
   const maxWidth = 560;
+
+  // If a confirmation / magic link lands here, GoTrue appends the session to the
+  // URL hash. Consume it once, strip it from the address bar, and sign the user
+  // in — so clicking the link actually logs them in (mirrors /reset-password).
+  const [confirming, setConfirming] = useState(false);
+  const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const parsed = parseAuthHash(window.location.hash);
+    if (!parsed) return;
+    window.history.replaceState({}, '', '/account'); // never leave tokens in history
+    if (parsed.error) {
+      setConfirmMsg(`${parsed.error}. Try signing in below, or request a new link.`);
+      return;
+    }
+    if (parsed.tokens) {
+      setConfirming(true);
+      establishSession(parsed.tokens)
+        .then(() => setConfirmMsg('Email confirmed — you’re signed in.'))
+        .catch(() => setConfirmMsg('We couldn’t finish signing you in. Please sign in below.'))
+        .finally(() => setConfirming(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center', paddingTop: insets.top + 20 }}>
@@ -39,10 +66,19 @@ export default function Account() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}>
+          {confirmMsg && (
+            <View style={[styles.card, { backgroundColor: theme.accentSoft, borderColor: theme.accent, padding: 14, marginBottom: 14 }]}>
+              <Text style={{ color: theme.accent, fontSize: 14 * fontScale, fontWeight: '600' }}>{confirmMsg}</Text>
+            </View>
+          )}
           {!supabaseConfigured ? (
             <Text style={{ color: theme.textMuted, fontSize: 15 * fontScale, lineHeight: 22 }}>
               Accounts aren’t configured yet.
             </Text>
+          ) : confirming ? (
+            <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, alignItems: 'center' }]}>
+              <ActivityIndicator color={theme.accent} />
+            </View>
           ) : session ? (
             <Profile />
           ) : (
@@ -94,11 +130,17 @@ function AuthForm() {
       setError('Enter your email and password.');
       return;
     }
+    if (mode === 'up' && password.length < MIN_PASSWORD) {
+      setError(`Use a password with at least ${MIN_PASSWORD} characters.`);
+      return;
+    }
     setBusy(true);
     try {
       if (mode === 'in') {
         await signIn(email, password);
       } else {
+        // Accounts are created already-confirmed, so signUp signs the user in
+        // right away; needsConfirm is only true on the legacy fallback path.
         const { needsConfirm } = await signUp(email, password);
         if (needsConfirm) {
           setNotice('Account created. Check your email to confirm, then sign in.');
@@ -106,7 +148,14 @@ function AuthForm() {
         }
       }
     } catch (e: any) {
-      setError(e?.message || 'Something went wrong. Please try again.');
+      const msg: string = e?.message || '';
+      if (/not confirmed/i.test(msg)) {
+        setError('This email hasn’t been confirmed yet. Check your inbox for the confirmation link, or reset your password to confirm it.');
+      } else if (mode === 'in' && /invalid login credentials/i.test(msg)) {
+        setError('Email or password is incorrect. Double-check them, or create an account.');
+      } else {
+        setError(msg || 'Something went wrong. Please try again.');
+      }
     } finally {
       setBusy(false);
     }
