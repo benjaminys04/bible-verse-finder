@@ -1,17 +1,35 @@
 import { adminConfigured, adminCreateConfirmedUser } from '../src/lib/supabaseAdmin';
 import { rateLimit, clientKey } from '../src/lib/rateLimit';
 
-// POST /signup { email, password }
+// GET /signup — credentials passed as URI-encoded request headers
+//   x-signup-email, x-signup-password
 // Creates an already-confirmed account (service-role Admin API) so the user can
 // sign in with their chosen password immediately — no email-confirmation wall.
 // The client signs in right after a 200. Returns 503 when accounts aren't
 // configured, so the client can fall back to direct (client-side) signup.
+//
+// Why GET + headers rather than POST + body: this app's server runs on
+// @expo/server's Vercel adapter, where reading a request body (request.json())
+// never resolves and the function times out (every other route here is likewise
+// GET). Headers travel inside the same TLS-encrypted request as a body would,
+// but — unlike a query string — are not written to access logs / browser history
+// / Referer, so they're a safe carrier for the password. Values are
+// URI-encoded so non-ASCII passwords stay header-safe.
 const NO_STORE = { 'cache-control': 'no-store' };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
 
-export async function POST(request: Request): Promise<Response> {
+function decodeHeader(v: string | null): string {
+  if (!v) return '';
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v; // tolerate a value that wasn't encoded
+  }
+}
+
+export async function GET(request: Request): Promise<Response> {
   if (!adminConfigured()) {
     return Response.json({ error: 'not-configured' }, { status: 503, headers: NO_STORE });
   }
@@ -26,9 +44,8 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const body = await request.json().catch(() => ({} as any));
-  const email = String(body?.email ?? '').trim().toLowerCase();
-  const password = String(body?.password ?? '');
+  const email = decodeHeader(request.headers.get('x-signup-email')).trim().toLowerCase();
+  const password = decodeHeader(request.headers.get('x-signup-password'));
 
   if (!EMAIL_RE.test(email)) {
     return Response.json({ error: 'Enter a valid email address.' }, { status: 400, headers: NO_STORE });

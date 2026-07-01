@@ -68,10 +68,16 @@ export async function signUp(email: string, password: string): Promise<{ session
 // (503) so the caller should fall back to client-side signUp(). Throws with a
 // user-facing message for real failures (e.g. the email is already registered).
 export async function signUpViaServer(email: string, password: string): Promise<boolean> {
+  // GET + URI-encoded headers (not a POST body): the @expo/server Vercel adapter
+  // hangs on request-body reads, so every route in this app takes input via the
+  // URL/headers. Headers ride inside the TLS request like a body would, but
+  // aren't logged the way a query string is — safe for the password.
   const res = await fetch('/signup', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: email.trim(), password }),
+    method: 'GET',
+    headers: {
+      'x-signup-email': encodeURIComponent(email.trim()),
+      'x-signup-password': encodeURIComponent(password),
+    },
   });
   if (res.status === 503) return false; // not configured → caller falls back
   const data = await res.json().catch(() => ({} as any));
